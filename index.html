@@ -1,0 +1,2666 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Misión Espacial NASA 1962 · Métodos Numéricos de Ascenso</title>
+<style>
+:root{
+  --bg:#f8fafc;
+  --bg-subtle:#f1f5f9;
+  --card:#ffffff;
+  --line:#e2e8f0;
+  --line-strong:#cbd5e1;
+  --txt:#0f172a;
+  --muted:#64748b;
+  --light-muted:#94a3b8;
+
+  /* Colores de métodos y estados */
+  --nasa-blue:#1d4ed8;
+  --nasa-dark:#0f172a;
+  --euler-col:#0284c7;    /* Cyan / Sky 600 */
+  --heun-col:#ea580c;     /* Orange / Amber 600 */
+  --rk4-col:#7c3aed;      /* Violet / Purple 600 */
+  --exact-col:#16a34a;    /* Emerald Green 600 */
+  --err-col:#dc2626;      /* Red 600 */
+  --warn-col:#d97706;     /* Amber 600 */
+
+  --shadow-sm:0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+  --shadow-md:0 4px 6px -1px rgba(15,23,42,.07), 0 2px 4px -2px rgba(15,23,42,.05);
+  --shadow-lg:0 10px 15px -3px rgba(15,23,42,.08), 0 4px 6px -4px rgba(15,23,42,.04);
+  --radius:12px;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--txt)}
+body{
+  font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  line-height:1.55;
+  background-image:
+    radial-gradient(at 10% 10%, rgba(37,99,235,0.04) 0px, transparent 50%),
+    radial-gradient(at 90% 10%, rgba(124,58,237,0.04) 0px, transparent 50%),
+    radial-gradient(at 50% 90%, rgba(2,132,199,0.03) 0px, transparent 50%);
+}
+
+/* ================= HEADER HERO ================= */
+.hero{
+  background:linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  border-bottom:1px solid var(--line);
+  padding:36px 20px 26px;
+  text-align:center;
+  position:relative;
+}
+.hero-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  font-size:11.5px;
+  font-weight:700;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--nasa-blue);
+  background:rgba(29,78,216,.08);
+  border:1px solid rgba(29,78,216,.2);
+  border-radius:999px;
+  padding:5px 15px;
+  margin-bottom:14px;
+}
+.hero h1{
+  margin:0 0 10px;
+  font-size:clamp(24px,3.8vw,38px);
+  font-weight:800;
+  color:var(--txt);
+  letter-spacing:-.025em;
+}
+.hero h1 span.gradient{
+  background:linear-gradient(90deg, #1d4ed8, #0284c7, #7c3aed);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+.hero p{
+  margin:0 auto;
+  max-width:820px;
+  color:var(--muted);
+  font-size:15px;
+  line-height:1.6;
+}
+
+/* ================= TABS NAVIGATION (3 PESTAÑAS) ================= */
+.tabs-bar{
+  position:sticky;
+  top:0;
+  z-index:40;
+  background:rgba(255,255,255,.94);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+  display:flex;
+  justify-content:center;
+  padding:8px 16px;
+  box-shadow:var(--shadow-sm);
+}
+.tabs-container{
+  display:flex;
+  gap:8px;
+  max-width:960px;
+  width:100%;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.tabs-container::-webkit-scrollbar{display:none}
+
+.tab-btn{
+  flex:1 1 0;
+  min-width:200px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:10px 18px;
+  font-size:13.5px;
+  font-weight:600;
+  color:var(--muted);
+  background:transparent;
+  border:1px solid transparent;
+  border-radius:10px;
+  cursor:pointer;
+  transition:all .18s ease;
+  white-space:nowrap;
+}
+.tab-btn:hover{
+  color:var(--txt);
+  background:var(--bg-subtle);
+}
+.tab-btn.active{
+  color:#ffffff;
+  background:linear-gradient(135deg, var(--nasa-blue), #2563eb);
+  box-shadow:0 4px 12px -2px rgba(29,78,216,.4);
+  border-color:transparent;
+}
+.tab-icon{font-size:16px}
+
+/* ================= MAIN LAYOUT ================= */
+main{
+  max-width:1260px;
+  margin:0 auto;
+  padding:24px 20px 80px;
+}
+.panel{display:none; animation:tabFadeIn .22s ease-out}
+.panel.active{display:block}
+@keyframes tabFadeIn{
+  from{opacity:0;transform:translateY(6px)}
+  to{opacity:1;transform:none}
+}
+
+.grid-2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+}
+@media (max-width:980px){
+  .grid-2{grid-template-columns:1fr}
+}
+
+/* ================= TARJETAS Y CONTENEDORES ================= */
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:20px 22px;
+  margin-bottom:20px;
+  box-shadow:var(--shadow-sm);
+  transition:box-shadow .2s ease;
+}
+.card:hover{
+  box-shadow:var(--shadow-md);
+}
+.card-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:16px;
+  flex-wrap:wrap;
+}
+.card-title{
+  margin:0;
+  font-size:16.5px;
+  font-weight:700;
+  color:var(--txt);
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.card-title .dot{
+  width:8px;
+  height:18px;
+  border-radius:4px;
+  background:var(--nasa-blue);
+  display:inline-block;
+}
+.card-title.euler .dot{background:var(--euler-col)}
+.card-title.heun .dot{background:var(--heun-col)}
+.card-title.rk4 .dot{background:var(--rk4-col)}
+.card-title.exact .dot{background:var(--exact-col)}
+
+.hint{
+  font-size:12.5px;
+  color:var(--muted);
+  font-weight:400;
+}
+
+/* ================= KPIS / RESUMEN ================= */
+.kpis{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:14px;
+  margin-bottom:18px;
+}
+.kpi{
+  background:var(--bg-subtle);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:14px 16px;
+  position:relative;
+  overflow:hidden;
+}
+.kpi::before{
+  content:'';
+  position:absolute;
+  left:0; top:0; bottom:0;
+  width:4px;
+  background:var(--nasa-blue);
+}
+.kpi.euler::before{background:var(--euler-col)}
+.kpi.heun::before{background:var(--heun-col)}
+.kpi.rk4::before{background:var(--rk4-col)}
+.kpi.exact::before{background:var(--exact-col)}
+.kpi.err::before{background:var(--err-col)}
+
+.kpi-label{
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+.kpi-value{
+  font-size:22px;
+  font-weight:800;
+  color:var(--txt);
+  letter-spacing:-.02em;
+  line-height:1.2;
+}
+.kpi-value span{
+  font-size:12.5px;
+  font-weight:600;
+  color:var(--muted);
+  margin-left:4px;
+}
+.kpi-sub{
+  font-size:11.5px;
+  color:var(--muted);
+  margin-top:4px;
+}
+
+/* Veredicto de la misión */
+.verdict-box{
+  display:flex;
+  align-items:flex-start;
+  gap:14px;
+  padding:16px 18px;
+  border-radius:10px;
+  margin-bottom:18px;
+  border:1px solid transparent;
+}
+.verdict-box.ok{
+  background:#ecfdf5;
+  border-color:#a7f3d0;
+  color:#065f46;
+}
+.verdict-box.bad{
+  background:#fef2f2;
+  border-color:#fecaca;
+  color:#991b1b;
+}
+.verdict-icon{
+  font-size:24px;
+  line-height:1;
+}
+.verdict-text strong{
+  display:block;
+  font-size:14.5px;
+  font-weight:700;
+  margin-bottom:3px;
+}
+.verdict-text span{
+  font-size:13px;
+  line-height:1.45;
+  color:currentColor;
+  opacity:.9;
+}
+
+/* ================= INPUTS & CONTROLES ================= */
+.fields-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:12px;
+  margin-bottom:14px;
+}
+label.field{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  font-size:12px;
+  font-weight:600;
+  color:var(--muted);
+}
+label.field input, label.field select{
+  font:inherit;
+  font-size:13.5px;
+  font-weight:600;
+  color:var(--txt);
+  background:#ffffff;
+  border:1px solid var(--line-strong);
+  border-radius:8px;
+  padding:8px 10px;
+  outline:none;
+  transition:all .15s ease;
+}
+label.field input:focus, label.field select:focus{
+  border-color:var(--nasa-blue);
+  box-shadow:0 0 0 3px rgba(37,99,235,.15);
+}
+
+.btn{
+  font:inherit;
+  font-size:13px;
+  font-weight:600;
+  color:#ffffff;
+  background:linear-gradient(135deg, var(--nasa-blue), #2563eb);
+  border:none;
+  border-radius:8px;
+  padding:8px 16px;
+  cursor:pointer;
+  transition:all .16s ease;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  box-shadow:var(--shadow-sm);
+}
+.btn:hover{
+  filter:brightness(1.08);
+  transform:translateY(-1px);
+  box-shadow:var(--shadow-md);
+}
+.btn:active{transform:translateY(0)}
+
+.btn.secondary{
+  background:#ffffff;
+  color:var(--txt);
+  border:1px solid var(--line-strong);
+  box-shadow:none;
+}
+.btn.secondary:hover{
+  background:var(--bg-subtle);
+  border-color:var(--muted);
+}
+.btn.sm{padding:6px 12px;font-size:12px}
+
+.btn-row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+/* ================= HITOS DE TIEMPO (2s, 4s, 10s, 20s) ================= */
+.milestones-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:12px;
+  margin-top:14px;
+}
+.milestone-card{
+  background:#ffffff;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:12px 14px;
+  box-shadow:var(--shadow-sm);
+  border-left:4px solid var(--nasa-blue);
+}
+.milestone-time{
+  font-size:12px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:var(--nasa-blue);
+  margin-bottom:6px;
+  display:flex;
+  justify-content:space-between;
+}
+.milestone-vals{
+  font-size:12.5px;
+  line-height:1.6;
+}
+.milestone-vals div{display:flex;justify-content:space-between}
+.milestone-vals span.k{color:var(--muted)}
+.milestone-vals span.v{font-weight:700;color:var(--txt)}
+.milestone-vals span.err{color:var(--err-col);font-size:11.5px}
+
+/* ================= SIMULADOR VISUAL DE VUELO ================= */
+.sim-container{
+  position:relative;
+  background:linear-gradient(180deg, #bae6fd 0%, #e0f2fe 70%, #f0fdf4 100%);
+  border:1px solid var(--line-strong);
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.04);
+}
+#canvas-flight{
+  display:block;
+  width:100%;
+  height:340px;
+}
+.sim-controls{
+  background:#ffffff;
+  border-top:1px solid var(--line);
+  padding:12px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.sim-slider-wrap{
+  flex:1;
+  min-width:180px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.sim-slider-wrap input[type=range]{
+  flex:1;
+  accent-color:var(--nasa-blue);
+}
+.sim-telemetry-badge{
+  font-family:monospace;
+  font-size:12.5px;
+  font-weight:700;
+  background:var(--bg-subtle);
+  padding:5px 10px;
+  border-radius:6px;
+  border:1px solid var(--line);
+  color:var(--txt);
+}
+
+/* ================= GRÁFICAS Y CANVAS ================= */
+.chart-controls-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  background:var(--bg-subtle);
+  padding:10px 14px;
+  border-radius:8px;
+  margin-bottom:14px;
+  border:1px solid var(--line);
+}
+.series-toggles{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.series-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:12px;
+  font-weight:600;
+  padding:5px 11px;
+  border-radius:999px;
+  cursor:pointer;
+  user-select:none;
+  border:1px solid var(--line-strong);
+  background:#ffffff;
+  transition:all .15s ease;
+}
+.series-pill input{margin:0;cursor:pointer}
+.series-pill.exact{color:var(--exact-col)}
+.series-pill.euler{color:var(--euler-col)}
+.series-pill.heun{color:var(--heun-col)}
+.series-pill.rk4{color:var(--rk4-col)}
+.series-pill.active{
+  border-color:currentColor;
+  background:rgba(255,255,255,.9);
+  box-shadow:var(--shadow-sm);
+}
+
+.chart-wrapper{
+  position:relative;
+  background:#ffffff;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px 10px 16px;
+  margin-bottom:16px;
+}
+canvas.chart{
+  width:100%;
+  height:310px;
+  display:block;
+  cursor:crosshair;
+}
+.chart-tooltip{
+  position:absolute;
+  pointer-events:none;
+  display:none;
+  background:rgba(15,23,42,.92);
+  color:#ffffff;
+  padding:10px 14px;
+  border-radius:8px;
+  font-size:12px;
+  line-height:1.5;
+  box-shadow:0 10px 25px rgba(0,0,0,.2);
+  z-index:20;
+  transform:translate(-50%, -115%);
+  white-space:nowrap;
+  border:1px solid rgba(255,255,255,.15);
+}
+.chart-tooltip strong{display:block;margin-bottom:4px;font-size:12.5px;color:#93c5fd}
+
+/* ================= DESGLOSE DE ITERACIONES (PESTAÑA 2) ================= */
+.methods-nav{
+  display:flex;
+  gap:10px;
+  margin-bottom:18px;
+  flex-wrap:wrap;
+}
+.method-tab{
+  padding:10px 20px;
+  font-size:13.5px;
+  font-weight:700;
+  border-radius:8px;
+  border:1px solid var(--line-strong);
+  background:#ffffff;
+  color:var(--muted);
+  cursor:pointer;
+  transition:all .15s ease;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+}
+.method-tab:hover{
+  color:var(--txt);
+  background:var(--bg-subtle);
+}
+.method-tab.active.euler{
+  color:#ffffff;
+  background:var(--euler-col);
+  border-color:var(--euler-col);
+  box-shadow:0 4px 10px rgba(2,132,199,.3);
+}
+.method-tab.active.heun{
+  color:#ffffff;
+  background:var(--heun-col);
+  border-color:var(--heun-col);
+  box-shadow:0 4px 10px rgba(234,88,12,.3);
+}
+.method-tab.active.rk4{
+  color:#ffffff;
+  background:var(--rk4-col);
+  border-color:var(--rk4-col);
+  box-shadow:0 4px 10px rgba(124,58,237,.3);
+}
+
+.stepper-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  background:var(--bg-subtle);
+  border:1px solid var(--line);
+  padding:10px 16px;
+  border-radius:10px;
+  margin-bottom:18px;
+  flex-wrap:wrap;
+}
+.stepper-info{
+  font-size:13.5px;
+  font-weight:700;
+  color:var(--txt);
+}
+.stepper-nav{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.step-card{
+  background:#ffffff;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:20px;
+  margin-bottom:16px;
+  box-shadow:var(--shadow-sm);
+}
+.step-title{
+  font-size:14px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:var(--nasa-blue);
+  margin-bottom:14px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.step-math-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:16px;
+}
+.math-subcard{
+  background:var(--bg-subtle);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:14px 16px;
+}
+.math-subcard-title{
+  font-size:11.5px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--muted);
+  margin-bottom:8px;
+}
+.math-eq{
+  font-family:'Cambria Math',Georgia,serif;
+  font-size:14.5px;
+  color:var(--txt);
+  line-height:1.7;
+}
+.math-eq b{color:var(--nasa-blue)}
+.math-eq.euler b{color:var(--euler-col)}
+.math-eq.heun b{color:var(--heun-col)}
+.math-eq.rk4 b{color:var(--rk4-col)}
+.math-eq.exact b{color:var(--exact-col)}
+
+/* ================= TABLAS COMPLETAS ================= */
+.table-wrap{
+  overflow-x:auto;
+  max-height:540px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#ffffff;
+  box-shadow:var(--shadow-sm);
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+  text-align:right;
+}
+thead th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:#f1f5f9;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  padding:10px 12px;
+  border-bottom:2px solid var(--line-strong);
+  white-space:nowrap;
+}
+thead th:first-child{text-align:center}
+thead th.th-left{text-align:left}
+tbody td{
+  padding:9px 12px;
+  border-bottom:1px solid var(--line);
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+tbody td:first-child{text-align:center;color:var(--muted)}
+tbody td.td-left{text-align:left;font-weight:600}
+tbody tr:nth-child(even){background:rgba(241,245,249,.45)}
+tbody tr:hover{background:#e0f2fe}
+tbody tr.highlight{background:#e0f2fe;font-weight:600}
+td.err{color:var(--err-col);font-weight:600}
+td.good{color:var(--exact-col);font-weight:600}
+tfoot td{
+  position:sticky;
+  bottom:0;
+  background:#f8fafc;
+  font-weight:700;
+  color:var(--txt);
+  border-top:2px solid var(--line-strong);
+  padding:11px 12px;
+}
+
+/* ================= DEDUCCIÓN MATEMÁTICA (PESTAÑA 3) ================= */
+.deriv-step{
+  border-left:3px solid var(--nasa-blue);
+  background:var(--bg-subtle);
+  border-radius:0 10px 10px 0;
+  padding:14px 18px;
+  margin-bottom:16px;
+}
+.deriv-step h3{
+  margin:0 0 8px;
+  font-size:14.5px;
+  font-weight:700;
+  color:var(--nasa-blue);
+}
+.deriv-step p{
+  margin:0 0 8px;
+  font-size:13.5px;
+  color:var(--txt);
+  line-height:1.6;
+}
+.deriv-formula{
+  background:#ffffff;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:10px 16px;
+  font-family:'Cambria Math',Georgia,serif;
+  font-size:15.5px;
+  color:var(--txt);
+  margin:8px 0;
+  overflow-x:auto;
+}
+
+/* ================= PREGUNTAS DE REFLEXIÓN ================= */
+.qa-card{
+  background:#ffffff;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:18px 20px;
+  margin-bottom:16px;
+  box-shadow:var(--shadow-sm);
+}
+.qa-question{
+  font-size:15px;
+  font-weight:700;
+  color:var(--nasa-blue);
+  margin:0 0 12px;
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+}
+.qa-num{
+  flex:0 0 auto;
+  width:26px;
+  height:26px;
+  border-radius:6px;
+  background:rgba(29,78,216,.1);
+  color:var(--nasa-blue);
+  display:grid;
+  place-items:center;
+  font-size:13px;
+  font-weight:800;
+}
+.qa-answer{
+  font-size:13.8px;
+  color:#334155;
+  line-height:1.65;
+  padding-left:38px;
+}
+.qa-answer ul{
+  margin:8px 0 0;
+  padding-left:20px;
+}
+.qa-answer li{
+  margin-bottom:6px;
+}
+.qa-answer strong{color:var(--txt)}
+.qa-answer code{
+  background:var(--bg-subtle);
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:2px 6px;
+  font-size:12.5px;
+  color:var(--nasa-blue);
+}
+
+.notice-box{
+  background:#eff6ff;
+  border-left:4px solid var(--nasa-blue);
+  border-radius:0 8px 8px 0;
+  padding:14px 18px;
+  font-size:13.5px;
+  color:#1e3a8a;
+  margin-top:16px;
+  line-height:1.6;
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width:680px){
+  main{padding:16px 12px 60px}
+  .card{padding:16px 14px}
+  .tab-btn{min-width:140px;font-size:12px;padding:8px 12px}
+  .kpi-value{font-size:18px}
+  .qa-answer{padding-left:0;margin-top:10px}
+}
+</style>
+</head>
+<body>
+
+<!-- HERO HEADER (LIGHT THEME) -->
+<header class="hero">
+  <div class="hero-badge">
+    NASA Langley · 1962 · Proyecto Mercury / Amistad 7
+  </div>
+  <h1>Misión Espacial: <span class="gradient">Despegue del Cohete Experimental</span></h1>
+  <p>Simulación interactiva basada en el método de Euler, extensión a Heun y Runge-Kutta 4 (RK4), y validación con la solución analítica exacta de Katherine Johnson.</p>
+</header>
+
+<!-- TABS DE NAVEGACIÓN UNIFICADAS (3 PESTAÑAS) -->
+<nav class="tabs-bar">
+  <div class="tabs-container" id="tabs">
+    <button class="tab-btn active" data-tab="simulador">
+      <span>1 · Simulación y Gráficas</span>
+    </button>
+    <button class="tab-btn" data-tab="iteraciones">
+      <span>2 · Iteraciones (Euler · Heun · RK4)</span>
+    </button>
+    <button class="tab-btn" data-tab="modelo">
+      <span>3 · Modelo, Convergencia y Reflexión</span>
+    </button>
+  </div>
+</nav>
+
+<main>
+
+<!-- =========================================================================
+     PESTAÑA 1: SIMULACIÓN INTERACTIVA Y GRÁFICAS DINÁMICAS
+     ========================================================================= -->
+<section class="panel active" id="panel-simulador">
+
+  <!-- RESUMEN DE LA MISIÓN Y VEREDICTO -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title"><span class="dot"></span> Telemetría Final a t = <span id="lbl-tf">20</span> s</h2>
+      <span class="hint">Comparativa de métodos frente a la solución analítica exacta</span>
+    </div>
+    <div class="kpis" id="summary-kpis"></div>
+    <div id="mission-verdict"></div>
+  </div>
+
+    <!-- COLUMNA IZQUIERDA: PARÁMETROS E HITOS -->
+    <div>
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="dot"></span> Parámetros del Cohete Experimental</h2>
+          <button class="btn secondary sm" id="btn-reset">Restaurar NASA 1962</button>
+        </div>
+        <div class="fields-grid">
+          <label class="field">Masa m (kg)
+            <input id="in-m" type="number" value="1000" min="1" step="50">
+          </label>
+          <label class="field">Empuje T (N)
+            <input id="in-T" type="number" value="15000" min="0" step="100">
+          </label>
+          <label class="field">Gravedad g (m/s²)
+            <input id="in-g" type="number" value="9.81" min="0" step="0.01">
+          </label>
+          <label class="field">Resistencia k (kg/s)
+            <input id="in-k" type="number" value="100" min="0" step="5">
+          </label>
+          <label class="field">Velocidad v₀ (m/s)
+            <input id="in-v0" type="number" value="0" step="0.5">
+          </label>
+          <label class="field">Altura y₀ (m)
+            <input id="in-y0" type="number" value="0" step="1">
+          </label>
+          <label class="field">Tiempo final tf (s)
+            <input id="in-tf" type="number" value="20" min="1" max="100" step="1">
+          </label>
+          <label class="field">Paso h (Preselección)
+            <select id="sel-preset-h">
+              <option value="2">2.0 s (Estándar NASA 1962)</option>
+              <option value="1">1.0 s (20 pasos)</option>
+              <option value="0.5">0.5 s (40 pasos)</option>
+              <option value="0.25">0.25 s (80 pasos)</option>
+              <option value="custom">Personalizado...</option>
+            </select>
+          </label>
+          <label class="field">Paso h libre (s)
+            <input id="in-h" type="number" value="2" min="0.001" max="10" step="0.05">
+          </label>
+        </div>
+      </div>
+
+      <!-- HITOS EXIGIDOS POR LA RÚBRICA (t = 2, 4, 10, 20 s) -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="dot"></span> Hitos</h2>
+        </div>
+        <div class="milestones-grid" id="milestones-box"></div>
+      </div>
+    </div>
+
+    <!-- COLUMNA DERECHA: SIMULADOR VISUAL ANIMADO EN TIEMPO REAL -->
+    <div>
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="dot"></span> Vuelo Dinámico en Tiempo Real (NASA Pad 1962)</h2>
+          <span class="hint">Visualización del despegue y desfase de altura</span>
+        </div>
+        <div class="sim-container">
+          <canvas id="canvas-flight"></canvas>
+        </div>
+        <div class="sim-controls">
+          <div class="btn-row">
+            <button class="btn sm" id="sim-btn-play">Iniciar Despegue</button>
+            <button class="btn secondary sm" id="sim-btn-reset">Reiniciar</button>
+          </div>
+          <div class="sim-slider-wrap">
+            <span style="font-size:12px;font-weight:700;color:var(--muted)">Tiempo:</span>
+            <input id="sim-slider" type="range" min="0" max="20" step="0.05" value="0">
+            <span class="sim-telemetry-badge" id="sim-time-lbl">0.00 s</span>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--muted);display:flex;gap:18px;flex-wrap:wrap">
+          <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:var(--exact-col);display:inline-block"></span> <b>Verde:</b> Solución Analítica Real</span>
+          <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:var(--euler-col);display:inline-block"></span> <b>Azul:</b> Método de Euler (h = <span id="sim-h-lbl">2</span> s)</span>
+          <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:var(--rk4-col);display:inline-block"></span> <b>Púrpura:</b> RK4</span>
+        </div>
+      </div>
+    </div>
+  
+
+  <!-- SECCIÓN DE GRÁFICAS INTERACTIVAS DINÁMICAS -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title"><span class="dot"></span> Gráficas de Trayectoria y Error Numérico</h2>
+    </div>
+
+    <!-- Toggles de series -->
+    <div class="chart-controls-bar">
+      <div style="font-size:12.5px;font-weight:700;color:var(--txt)">Curvas visibles:</div>
+      <div class="series-toggles">
+        <label class="series-pill exact active">
+          <input type="checkbox" id="chk-exact" checked> Solución Analítica
+        </label>
+        <label class="series-pill euler active">
+          <input type="checkbox" id="chk-euler" checked> Método de Euler
+        </label>
+        <label class="series-pill heun active">
+          <input type="checkbox" id="chk-heun" checked> Método de Heun
+        </label>
+        <label class="series-pill rk4 active">
+          <input type="checkbox" id="chk-rk4" checked> Runge-Kutta 4 (RK4)
+        </label>
+      </div>
+    </div>
+
+    <!-- GRÁFICA 1: VELOCIDAD -->
+    <div class="chart-wrapper">
+      <div style="font-size:13.5px;font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between">
+        <span>Velocidad v(t) [m/s]</span>
+        <span class="hint">Euler sobreestima la velocidad durante el ascenso</span>
+      </div>
+      <canvas class="chart" id="chart-v"></canvas>
+      <div class="chart-tooltip" id="tooltip-v"></div>
+    </div>
+
+    <!-- GRÁFICA 2: ALTURA -->
+    <div class="chart-wrapper">
+      <div style="font-size:13.5px;font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between">
+        <span>Altura y(t) [m]</span>
+        <span class="hint">Euler subestima la altura al utilizar la velocidad del inicio del paso</span>
+      </div>
+      <canvas class="chart" id="chart-y"></canvas>
+      <div class="chart-tooltip" id="tooltip-y"></div>
+    </div>
+
+    <!-- GRÁFICA 3: ERROR ABSOLUTO -->
+    <div class="chart-wrapper">
+      <div style="font-size:13.5px;font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between">
+        <span>Error Absoluto Acumulado |Valor Exacto − Valor Numérico|</span>
+        <span class="hint">Comparativa de errores entre Euler, Heun y RK4</span>
+      </div>
+      <canvas class="chart" id="chart-e"></canvas>
+      <div class="chart-tooltip" id="tooltip-e"></div>
+    </div>
+  </div>
+
+</section>
+
+<!-- =========================================================================
+     PESTAÑA 2: DESGLOSE MINUCIOSO DE ITERACIONES (EULER, HEUN Y RK4)
+     ========================================================================= -->
+<section class="panel" id="panel-iteraciones">
+
+  <!-- COMPARATIVA DE ÓRDENES Y PRINCIPIO -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title"><span class="dot"></span> Arquitectura de los Tres Métodos de Integración</h2>
+      <span class="hint">Balance entre coste computacional y orden de convergencia</span>
+    </div>
+    <div class="milestones-grid">
+      <div class="milestone-card" style="border-left-color:var(--euler-col)">
+        <div class="milestone-time" style="color:var(--euler-col)">Método de Euler · Orden 1</div>
+        <div style="font-size:12.5px;color:var(--muted)">1 evaluación de f por paso. Usa solo la derivada inicial. Error global del orden de <b>O(h)</b>.</div>
+      </div>
+      <div class="milestone-card" style="border-left-color:var(--heun-col)">
+        <div class="milestone-time" style="color:var(--heun-col)">Método de Heun · Orden 2</div>
+        <div style="font-size:12.5px;color:var(--muted)">2 evaluaciones por paso (Predictor + Corrector). Promedia la pendiente inicial y la estimada final. Error <b>O(h²)</b>.</div>
+      </div>
+      <div class="milestone-card" style="border-left-color:var(--rk4-col)">
+        <div class="milestone-time" style="color:var(--rk4-col)">Runge-Kutta 4 (RK4) · Orden 4</div>
+        <div style="font-size:12.5px;color:var(--muted)">4 evaluaciones por paso (Simpson ponderado de 4 pendientes). Máxima precisión astronómica. Error <b>O(h⁴)</b>.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPLORADOR INTERACTIVO PASO A PASO -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title"><span class="dot"></span> Explorador Detallado de Iteraciones Numéricas</h2>
+      <span class="hint">Desglose de valores intermedios (k₁, k₂, k₃, k₄) para el paso seleccionado</span>
+    </div>
+
+    <!-- Selector de Método -->
+    <div class="methods-nav">
+      <button class="method-tab euler active" id="tab-meth-euler">
+        Método de Euler (Orden 1)
+      </button>
+      <button class="method-tab heun" id="tab-meth-heun">
+        Método de Heun (Predictor-Corrector)
+      </button>
+      <button class="method-tab rk4" id="tab-meth-rk4">
+        Runge-Kutta 4 (RK4 - 4 Etapas)
+      </button>
+    </div>
+
+    <!-- Barra de Navegación de Pasos -->
+    <div class="stepper-bar">
+      <div class="stepper-info" id="stepper-title">Iteración 1: t = 0.00 s → 2.00 s (Paso h = 2 s)</div>
+      <div class="stepper-nav">
+        <button class="btn secondary sm" id="btn-step-prev">Anterior</button>
+        <select id="sel-step" style="padding:6px 10px;font-size:12.5px;border-radius:6px;border:1px solid var(--line-strong)"></select>
+        <button class="btn secondary sm" id="btn-step-next">Siguiente</button>
+      </div>
+    </div>
+
+    <!-- Contenedor dinámico del desglose matemático del paso -->
+    <div id="step-detail-container"></div>
+  </div>
+
+  <!-- TABLA COMPLETA DE ITERACIONES CON SELECTOR Y DESCARGA CSV -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title"><span class="dot"></span> Registro Tabular Completo de Iteraciones</h2>
+      <div class="btn-row">
+        <label class="field" style="flex-direction:row;align-items:center;margin:0">
+          <span style="font-size:12px;color:var(--muted)">Mostrar tabla de:</span>
+          <select id="sel-table-method" style="padding:5px 8px;font-size:12.5px;border-radius:6px">
+            <option value="euler">Método de Euler</option>
+            <option value="heun">Método de Heun</option>
+            <option value="rk4">Runge-Kutta 4 (RK4)</option>
+            <option value="comparative" selected>Comparativa Simultánea</option>
+          </select>
+        </label>
+        <button class="btn sm" id="btn-download-csv">Descargar CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="tbl-iterations-full"></table>
+    </div>
+  </div>
+
+</section>
+
+<!-- =========================================================================
+     PESTAÑA 3: MODELO TEÓRICO, CONVERGENCIA Y REFLEXIÓN
+     ========================================================================= -->
+<section class="panel" id="panel-modelo">
+
+  <!-- FORMULACIÓN DEL MODELO FÍSICO -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title"><span class="dot"></span> 1. Formulación e Interpretación del Modelo Físico</h2>
+      <span class="hint">Segunda Ley de Newton aplicada al ascenso vertical</span>
+    </div>
+    <p style="font-size:14px;color:var(--txt);margin:0 0 14px">
+      Durante el ascenso vertical, el cohete experimental de masa <b>m</b> está sometido a tres fuerzas: el empuje del motor <b>T</b> (hacia arriba), la atracción gravitatoria <b>mg</b> (hacia abajo) y la resistencia aerodinámica simplificada <b>kv</b> (opuesta a la velocidad).
+    </p>
+
+    <div class="deriv-step">
+      <h3>Segunda Ley de Newton</h3>
+      <p>La fuerza neta que actúa sobre el vehículo es:</p>
+      <div class="deriv-formula">
+        m · (dv / dt) = T − m·g − k·v
+      </div>
+      <p>Dividiendo la ecuación entre la masa <b>m</b> del cohete:</p>
+      <div class="deriv-formula">
+        dv / dt = (T / m) − g − (k / m) · v
+      </div>
+      <p>Sustituyendo los parámetros oficiales del ejercicio (<b>m = 1000 kg, T = 15000 N, g = 9.81 m/s², k = 100 kg/s</b>):</p>
+      <div class="deriv-formula">
+        dv / dt = (15000 / 1000) − 9.81 − (100 / 1000) · v = <b>5.19 − 0.1·v</b>
+      </div>
+      <p>Puesto que la velocidad es la derivada de la altura (dy/dt = v), obtenemos el sistema acoplado de primer orden:</p>
+      <div class="deriv-formula">
+        <b>dv/dt = 5.19 − 0.1·v</b> &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; <b>dy/dt = v</b> &nbsp;&nbsp;&nbsp;(Condiciones iniciales: v(0) = 0, y(0) = 0)
+      </div>
+    </div>
+  </div>
+
+  <!-- SOLUCIÓN ANALÍTICA EXACTA DESARROLLADA -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title"><span class="dot"></span> 2. Deducción Analítica Completa de Katherine Johnson</h2>
+      <span class="hint">Resolución exacta por separación de variables </span>
+    </div>
+
+    <div class="deriv-step">
+      <h3>Paso 1: Separación de Variables para la Velocidad</h3>
+      <div class="deriv-formula">
+        dv / (5.19 − 0.1·v) = dt
+      </div>
+    </div>
+
+    <div class="deriv-step">
+      <h3>Paso 2: Integración Indefinida</h3>
+      <p>Integrando ambos miembros (con la sustitución u = 5.19 − 0.1v, du = −0.1 dv):</p>
+      <div class="deriv-formula">
+        −10 · ln|5.19 − 0.1·v| = t + C₁ &nbsp;⟹&nbsp; ln|5.19 − 0.1·v| = −0.1·t + C₂
+      </div>
+      <p>Aplicando la función exponencial en ambos miembros:</p>
+      <div class="deriv-formula">
+        5.19 − 0.1·v = C · e<sup>−0.1·t</sup> &nbsp;⟹&nbsp; v(t) = 51.9 − 10·C · e<sup>−0.1·t</sup>
+      </div>
+    </div>
+
+    <div class="deriv-step">
+      <h3>Paso 3: Aplicación de la Condición Inicial v(0) = 0</h3>
+      <p>En el instante de encendido t = 0 s, el cohete parte del reposo:</p>
+      <div class="deriv-formula">
+        0 = 51.9 − 10·C &nbsp;⟹&nbsp; C = 5.19
+      </div>
+      <p>Por consiguiente, la <b>solución analítica exacta de la velocidad</b> es:</p>
+      <div class="deriv-formula" style="background:#f0fdf4;border-color:#86efac;font-weight:700;color:#166534">
+        v(t) = 51.9 · (1 − e<sup>−0.1·t</sup>)
+      </div>
+      <p style="font-size:12.5px;color:var(--muted)">
+        Velocidad límite teórica (cuando t → ∞): v<sub>∞</sub> = 5.19 / 0.1 = <b>51.9000 m/s</b>.
+      </p>
+    </div>
+
+    <div class="deriv-step">
+      <h3>Paso 4: Deducción de la Altura Exacta por Integración de v(t)</h3>
+      <p>Como dy/dt = v(t), integramos la velocidad respecto al tiempo:</p>
+      <div class="deriv-formula">
+        y(t) = ∫ 51.9 · (1 − e<sup>−0.1·t</sup>) dt = 51.9·t + 519·e<sup>−0.1·t</sup> + C₃
+      </div>
+      <p>Aplicando la condición inicial y(0) = 0:</p>
+      <div class="deriv-formula">
+        0 = 51.9(0) + 519·e⁰ + C₃ &nbsp;⟹&nbsp; C₃ = −519
+      </div>
+      <p>Obteniendo la <b>solución analítica exacta de la altura</b>:</p>
+      <div class="deriv-formula" style="background:#f0fdf4;border-color:#86efac;font-weight:700;color:#166534">
+        y(t) = 51.9·t − 519 · (1 − e<sup>−0.1·t</sup>)
+      </div>
+    </div>
+
+    <div class="deriv-step">
+      <h3>Paso 5: Evaluación Exacta a los 20 Segundos (t = 20 s)</h3>
+      <p>Sustituyendo t = 20 s (notando que e<sup>−0.1(20)</sup> = e<sup>−2</sup> ≈ 0.13533528):</p>
+      <div class="deriv-formula">
+        v(20) = 51.9 · (1 − e<sup>−2</sup>) = <b>44.8761 m/s</b>
+      </div>
+      <div class="deriv-formula">
+        y(20) = 51.9(20) − 519 · (1 − e<sup>−2</sup>) = 1038 − 448.7610 = <b>589.2390 m</b>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESTUDIO DE CONVERGENCIA Y REDUCCIÓN DE ERROR -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title"><span class="dot"></span> 3. Estudio de Convergencia y Reducción del Error</h2>
+      <span class="hint">Análisis comparativo de reducción de paso y justificación de órdenes O(h), O(h²), O(h⁴)</span>
+    </div>
+    <p style="font-size:13.5px;color:var(--txt)">
+      Al dividir el tamaño del paso <b>h</b> a la mitad, la teoría numérica predice que el error global se reduce según el orden del método: por un factor de <b>~2 para Euler (primer orden)</b>, por un factor de <b>~4 para Heun (segundo orden)</b> y por un factor de <b>~16 para RK4 (cuarto orden)</b>.
+    </p>
+    <div class="table-wrap">
+      <table id="tbl-convergence-full"></table>
+    </div>
+    <div class="notice-box">
+      <b>Justificación de la superioridad de RK4:</b> Para el mismo tamaño de paso (h = 2 s), RK4 produce un error de velocidad de apenas <b>0.0002 m/s</b> y un error de altura de <b>0.0022 m</b> (frente a 14.51 m en Euler). Aunque RK4 requiere 4 evaluaciones por paso frente a 1 de Euler, permite utilizar pasos 5 a 10 veces mayores manteniendo una precisión miles de veces superior, optimizando el costo computacional total.
+    </div>
+  </div>
+
+  <!-- PREGUNTAS DE REFLEXIÓN HISTÓRICAS Y FÍSICAS -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title"><span class="dot"></span> 4. Preguntas de Reflexión</h2>
+    </div>
+
+    <!-- P1 -->
+    <div class="qa-card">
+      <div class="qa-question">
+        <span class="qa-num">1</span>
+        <span>¿Por qué era crucial verificar manualmente los cálculos antes del vuelo de John Glenn en 1962?</span>
+      </div>
+      <div class="qa-answer">
+        En 1962 la NASA introdujo las computadoras electrónicas IBM 7090 para calcular las trayectorias de la cápsula <i>Friendship 7</i>. Sin embargo, el software y los compiladores eran nuevos y propensos a errores aritméticos, problemas de redondeo y fallos en las condiciones de frontera.
+        <ul>
+          <li>John Glenn desconfiaba de las máquinas y pidió expresamente: <i>«Pídanle a la chica (Katherine Johnson) que revise los números. Si ella dice que están bien, estoy listo para ir»</i>.</li>
+          <li>Un error diminuto en el ángulo de reentrada atmosférica (corredor de apenas 1.5 grados) provocaría que la cápsula rebotara en la atmósfera o se calcinara por sobrecalentamiento.</li>
+          <li>La <b>verificación cruzada independiente</b> (humano vs. máquina) garantizó que no hubiera vidas humanas en riesgo por un fallo de discretización o programación.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- P2 -->
+    <div class="qa-card">
+      <div class="qa-question">
+        <span class="qa-num">2</span>
+        <span>¿Qué riesgos existen al utilizar un tamaño de paso h demasiado grande en las ecuaciones del cohete?</span>
+      </div>
+      <div class="qa-answer">
+        <ul>
+          <li><b>Gran error de truncamiento:</b> Con h = 2 s, el error en altura a los 20 segundos ya alcanza los <b>14.51 metros</b>. Si el paso fuera de 5 o 10 segundos, el desvío sería de cientos de metros.</li>
+          <li><b>Inestabilidad numérica:</b> Para la ecuación diferencial lineal v' = a − b·v (donde b = k/m = 0.1 s⁻¹), la condición de estabilidad asintótica de Euler exige que <code>h &lt; 2 / b = 2 / 0.1 = 20 s</code>. Si h &gt; 20 s, la solución numérica oscila violentamente hacia infinito, a pesar de que el cohete físico tiene un vuelo amortiguado y estable.</li>
+          <li><b>Pérdida de eventos transitorios:</b> Si el empuje o la separación de etapas durara una fracción de segundo, un paso excesivamente grande ignoraría por completo el fenómeno físico.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- P3 -->
+    <div class="qa-card">
+      <div class="qa-question">
+        <span class="qa-num">3</span>
+        <span>¿Por qué una aproximación numérica puede parecer visualmente razonable y aun así acumular errores catastróficos?</span>
+      </div>
+      <div class="qa-answer">
+        <ul>
+          <li><b>Error local vs. Error global acumulativo:</b> En cada paso individual, el error parece despreciable (fracciones de milímetros). Sin embargo, cada paso arrastra el error del paso anterior, acumulando una desviación sistemática a lo largo de miles de iteraciones.</li>
+          <li><b>Efecto acumulativo en la integración de posición:</b> Euler utiliza la velocidad errónea para integrar la altura (y<sub>n+1</sub> = y<sub>n</sub> + h·v<sub>n</sub>). La desviación en velocidad se integra doblemente en la posición espacial.</li>
+          <li><b>La escala visual engaña:</b> En una gráfica general de 0 a 600 metros, una curva a 574.7 m y otra a 589.2 m parecen prácticamente coincidentes al ojo humano; sin embargo, una diferencia de 14.5 metros al momento del despliegue del paracaídas o acoplamiento orbital significa el fracaso total de la misión.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- P4 -->
+    <div class="qa-card">
+      <div class="qa-question">
+        <span class="qa-num">4</span>
+        <span>¿Qué variables reales del lanzamiento espacial no fueron consideradas en este modelo didáctico?</span>
+      </div>
+      <div class="qa-answer">
+        <ul>
+          <li><b>Masa variable (Ecuación de Tsiolkovski):</b> Un cohete real expulsa entre el 80% y 90% de su peso total en propelente durante el ascenso, por lo que la masa disminuye continuamente (dm/dt &lt; 0), provocando aceleraciones mucho más altas al final de la combustión.</li>
+          <li><b>Resistencia aerodinámica no lineal cuadrática:</b> La resistencia real responde a <code>F_D = ½ · ρ(y) · v² · C_D · A</code>. Depende fuertemente del cuadrado de la velocidad y de la densidad atmosférica ρ(y), que decae exponencialmente con la altitud.</li>
+          <li><b>Gravedad variable con la altitud:</b> La aceleración gravitatoria disminuye con el radio orbital según la ley de gravitación universal <code>g(y) = G·M / (R_T + y)²</code>.</li>
+          <li><b>Trayectoria curva y giro por gravedad (Gravity Turn):</b> Los cohetes no ascienden verticalmente de forma indefinida; realizan una inclinación programada para alcanzar la velocidad tangencial de inserción orbital (~7.8 km/s).</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- P5 -->
+    <div class="qa-card">
+      <div class="qa-question">
+        <span class="qa-num">5</span>
+        <span>¿Por qué el cálculo de una trayectoria lunar exige modelos mucho más avanzados que este ejercicio de ascenso?</span>
+      </div>
+      <div class="qa-answer">
+        <ul>
+          <li><b>Problema de los 3 Cuerpos Restringido (Tierra - Luna - Nave):</b> La astronave está simultáneamente bajo la atracción de la Tierra y de la Luna (más la perturbación del Sol). Este sistema no posee solución analítica exacta de forma cerrada; se requiere integración numérica forzosa.</li>
+          <li><b>Sistemas de 6 a 12 Ecuaciones Diferenciales Acopladas:</b> Se deben integrar las tres componentes de posición (x, y, z), tres de velocidad (vx, vy, vz) y los ángulos de actitud/orientación de la nave.</li>
+          <li><b>Problemas de Valor de Contorno (Two-Point Boundary Value):</b> La misión no busca saber dónde estará la nave en t = 20 s, sino qué empuje inicial colocar para interceptar la órbita de la Luna a 384,000 km varios días después (resuelto con métodos de disparo o <i>shooting</i>).</li>
+          <li><b>Uso obligatorio de integradores de alto orden adaptativos:</b> Métodos como Runge-Kutta-Fehlberg (RK45) o Dormand-Prince ajustan automáticamente el paso h: aumentan el paso en el vacío interplanetario y lo reducen a milisegundos durante las maniobras de frenado lunar y reentrada.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+</section>
+
+</main>
+
+<script>
+/* =========================================================================
+   LÓGICA MATEMÁTICA Y NUMÉRICA COMPLETA (EULER, HEUN, RK4, ANALÍTICA)
+   ========================================================================= */
+const $ = id => document.getElementById(id);
+
+// Formateador numérico en español con decimales configurables
+function fmt(x, d = 4){
+  if (!Number.isFinite(x)) return '—';
+  return x.toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+// Parámetros físicos del cohete
+const P = {
+  m: 1000,
+  T: 15000,
+  g: 9.81,
+  k: 100,
+  v0: 0,
+  y0: 0,
+  tf: 20,
+  h: 2
+};
+
+function readParams(){
+  P.m  = Math.max(0.1, parseFloat($('in-m').value) || 1000);
+  P.T  = Math.max(0, parseFloat($('in-T').value) || 15000);
+  P.g  = Math.max(0, parseFloat($('in-g').value) || 9.81);
+  P.k  = Math.max(0, parseFloat($('in-k').value) || 100);
+  P.v0 = parseFloat($('in-v0').value) || 0;
+  P.y0 = parseFloat($('in-y0').value) || 0;
+  P.tf = Math.max(1, parseFloat($('in-tf').value) || 20);
+  P.h  = Math.max(0.01, parseFloat($('in-h').value) || 2);
+  $('lbl-tf').textContent = fmt(P.tf, 0);
+  $('sim-h-lbl').textContent = fmt(P.h, 2);
+}
+
+// Función derivada: dv/dt = T/m - g - (k/m)*v = a - b*v
+function accel(v){
+  return (P.T / P.m) - P.g - (P.k / P.m) * v;
+}
+
+// Solución analítica exacta de Katherine Johnson
+function exactSolution(t){
+  const a = (P.T / P.m) - P.g;
+  const b = P.k / P.m;
+  if (Math.abs(b) < 1e-12){
+    return {
+      v: P.v0 + a * t,
+      y: P.y0 + P.v0 * t + 0.5 * a * t * t
+    };
+  }
+  const vt = a / b;
+  const expTerm = Math.exp(-b * t);
+  return {
+    v: vt + (P.v0 - vt) * expTerm,
+    y: P.y0 + vt * t + ((P.v0 - vt) / b) * (1 - expTerm)
+  };
+}
+
+// Simulación completa con almacenamiento de detalles de iteración
+function runSimulation(method, hCustom = null){
+  const hStep = hCustom || P.h;
+  const n = Math.max(1, Math.round(P.tf / hStep));
+  const effectiveH = P.tf / n;
+
+  const rows = [];
+  let t = 0;
+  let v = P.v0;
+  let y = P.y0;
+
+  // Registro inicial n=0
+  const ex0 = exactSolution(0);
+  rows.push({
+    n: 0,
+    t: 0,
+    v: v,
+    y: y,
+    vEx: ex0.v,
+    yEx: ex0.y,
+    ev: Math.abs(ex0.v - v),
+    ey: Math.abs(ex0.y - y),
+    detail: null
+  });
+
+  const aCoeff = (P.T / P.m) - P.g;
+  const bCoeff = P.k / P.m;
+
+  for (let i = 0; i < n; i++){
+    const tCurrent = t;
+    const vPrev = v;
+    const yPrev = y;
+    let detail = {};
+
+    if (method === 'euler'){
+      const an = accel(v);
+      const vNext = v + effectiveH * an;
+      const yNext = y + effectiveH * v;
+
+      detail = {
+        an: an,
+        vNext: vNext,
+        yNext: yNext
+      };
+
+      v = vNext;
+      y = yNext;
+
+    } else if (method === 'heun'){
+      // 1. Pendientes iniciales k1
+      const k1v = accel(v);
+      const k1y = v;
+
+      // 2. Predictor (Euler)
+      const vp = v + effectiveH * k1v;
+      const yp = y + effectiveH * k1y;
+
+      // 3. Pendientes correctoras en el estado predicho k2
+      const k2v = accel(vp);
+      const k2y = vp;
+
+      // 4. Corrector (Promedio trapezoidal)
+      const vNext = v + 0.5 * effectiveH * (k1v + k2v);
+      const yNext = y + 0.5 * effectiveH * (k1y + k2y);
+
+      detail = {
+        k1v, k1y,
+        vp, yp,
+        k2v, k2y,
+        vNext, yNext
+      };
+
+      v = vNext;
+      y = yNext;
+
+    } else if (method === 'rk4'){
+      // Etapa 1
+      const k1v = accel(v);
+      const k1y = v;
+
+      // Etapa 2
+      const vMid1 = v + 0.5 * effectiveH * k1v;
+      const yMid1 = y + 0.5 * effectiveH * k1y;
+      const k2v = accel(vMid1);
+      const k2y = vMid1;
+
+      // Etapa 3
+      const vMid2 = v + 0.5 * effectiveH * k2v;
+      const yMid2 = y + 0.5 * effectiveH * k2y;
+      const k3v = accel(vMid2);
+      const k3y = vMid2;
+
+      // Etapa 4
+      const vEnd = v + effectiveH * k3v;
+      const yEnd = y + effectiveH * k3y;
+      const k4v = accel(vEnd);
+      const k4y = vEnd;
+
+      // Promedio de Simpson ponderado
+      const deltaV = (effectiveH / 6.0) * (k1v + 2*k2v + 2*k3v + k4v);
+      const deltaY = (effectiveH / 6.0) * (k1y + 2*k2y + 2*k3y + k4y);
+
+      const vNext = v + deltaV;
+      const yNext = y + deltaY;
+
+      detail = {
+        k1v, k1y,
+        vMid1, yMid1, k2v, k2y,
+        vMid2, yMid2, k3v, k3y,
+        vEnd, yEnd, k4v, k4y,
+        deltaV, deltaY,
+        vNext, yNext
+      };
+
+      v = vNext;
+      y = yNext;
+    }
+
+    t = (i + 1) * effectiveH;
+    const ex = exactSolution(t);
+    rows.push({
+      n: i + 1,
+      t: t,
+      v: v,
+      y: y,
+      vEx: ex.v,
+      yEx: ex.y,
+      ev: Math.abs(ex.v - v),
+      ey: Math.abs(ex.y - y),
+      detail: detail
+    });
+  }
+
+  return { rows, h: effectiveH, n };
+}
+
+// Variables globales de datos
+let DATA_EULER = null;
+let DATA_HEUN = null;
+let DATA_RK4 = null;
+let currentStepIdx = 1;
+let currentDetailMethod = 'euler';
+
+/* =========================================================================
+   RENDER: KPIS Y RESUMEN DE MISIÓN
+   ========================================================================= */
+function renderMissionSummary(){
+  const lastE = DATA_EULER.rows[DATA_EULER.rows.length - 1];
+  const lastH = DATA_HEUN.rows[DATA_HEUN.rows.length - 1];
+  const lastR = DATA_RK4.rows[DATA_RK4.rows.length - 1];
+  const exact = exactSolution(P.tf);
+
+  $('summary-kpis').innerHTML = `
+    <div class="kpi exact">
+      <div class="kpi-label">Solución Analítica Exacta</div>
+      <div class="kpi-value">${fmt(exact.v, 2)}<span>m/s</span> · ${fmt(exact.y, 1)}<span>m</span></div>
+      <div class="kpi-sub">Referencia matemática absoluta</div>
+    </div>
+    <div class="kpi euler">
+      <div class="kpi-label">Euler (h = ${fmt(DATA_EULER.h, 2)}s)</div>
+      <div class="kpi-value">${fmt(lastE.v, 2)}<span>m/s</span> · ${fmt(lastE.y, 1)}<span>m</span></div>
+      <div class="kpi-sub">Error: Δv = ${fmt(lastE.ev, 2)} m/s, Δy = ${fmt(lastE.ey, 2)} m</div>
+    </div>
+    <div class="kpi heun">
+      <div class="kpi-label">Heun (Orden 2)</div>
+      <div class="kpi-value">${fmt(lastH.v, 2)}<span>m/s</span> · ${fmt(lastH.y, 1)}<span>m</span></div>
+      <div class="kpi-sub">Error: Δv = ${fmt(lastH.ev, 3)} m/s, Δy = ${fmt(lastH.ey, 2)} m</div>
+    </div>
+    <div class="kpi rk4">
+      <div class="kpi-label">Runge-Kutta 4 (RK4)</div>
+      <div class="kpi-value">${fmt(lastR.v, 2)}<span>m/s</span> · ${fmt(lastR.y, 1)}<span>m</span></div>
+      <div class="kpi-sub">Error: Δv = ${fmt(lastR.ev, 5)} m/s, Δy = ${fmt(lastR.ey, 4)} m</div>
+    </div>
+  `;
+
+  // Criterios de aprobación del desafío NASA:
+  // Error velocidad < 0.5 m/s Y error altura < 5 m
+  const okEuler = (lastE.ev < 0.5) && (lastE.ey < 5.0);
+
+  $('mission-verdict').innerHTML = `
+    <div class="verdict-box ${okEuler ? 'ok' : 'bad'}">
+      <div class="verdict-icon" style="font-size:11px;font-weight:800;letter-spacing:.06em;padding:4px 8px;border-radius:6px;border:1px solid currentColor">${okEuler ? 'APROBADO' : 'NO APROBADO'}</div>
+      <div class="verdict-text">
+        <strong>${okEuler ? 'Cálculos de Euler Aprobados por la NASA' : 'Cálculos de Euler NO Aprobados para Lanzamiento'}</strong>
+        <span>
+          Criterio del desafío: Error de velocidad &lt; 0.5 m/s (actual Euler: <b>${fmt(lastE.ev, 4)} m/s</b>) y error de altura &lt; 5 m (actual Euler: <b>${fmt(lastE.ey, 4)} m</b>).
+          ${okEuler
+            ? 'El paso seleccionado proporciona una discretización segura.'
+            : 'Con paso h = ' + fmt(DATA_EULER.h, 2) + ' s, Euler supera los márgenes de seguridad. ¡Heun y RK4 sí cumplen con creces los requisitos!'}
+        </span>
+      </div>
+    </div>
+  `;
+}
+
+/* =========================================================================
+   RENDER: HITOS CLAVE REQUERIDOS (t = 2, 4, 10, 20 s)
+   ========================================================================= */
+function renderMilestones(){
+  const targetTimes = [2, 4, 10, 20];
+  let html = '';
+
+  targetTimes.forEach(t => {
+    if (t > P.tf) return;
+    const ex = exactSolution(t);
+    // Buscar el punto más cercano en Euler
+    const ptE = DATA_EULER.rows.reduce((prev, curr) => Math.abs(curr.t - t) < Math.abs(prev.t - t) ? curr : prev);
+
+    html += `
+      <div class="milestone-card">
+        <div class="milestone-time">
+          <span>Hito t = ${t} s</span>
+          <span style="font-size:11px;font-weight:600;color:var(--muted)">Euler vs Exacta</span>
+        </div>
+        <div class="milestone-vals">
+          <div><span class="k">v Euler:</span> <span class="v">${fmt(ptE.v, 4)} m/s</span></div>
+          <div><span class="k">v Exacta:</span> <span class="v">${fmt(ex.v, 4)} m/s</span></div>
+          <div><span class="k">Error v:</span> <span class="err">${fmt(Math.abs(ex.v - ptE.v), 4)} m/s</span></div>
+          <div style="border-top:1px dashed var(--line);margin-top:4px;padding-top:4px">
+            <span class="k">y Euler:</span> <span class="v">${fmt(ptE.y, 4)} m</span>
+          </div>
+          <div><span class="k">y Exacta:</span> <span class="v">${fmt(ex.y, 4)} m</span></div>
+          <div><span class="k">Error y:</span> <span class="err">${fmt(Math.abs(ex.y - ptE.y), 4)} m</span></div>
+        </div>
+      </div>
+    `;
+  });
+
+  $('milestones-box').innerHTML = html;
+}
+
+/* =========================================================================
+   RENDER: SIMULADOR VISUAL ANIMADO EN VIVO (CANVAS FLIGHT)
+   ========================================================================= */
+let flightSimTime = 0;
+let isFlightPlaying = false;
+let flightAnimId = null;
+let lastFrameTime = null;
+
+function initFlightCanvas(){
+  const cv = $('canvas-flight');
+  const dpr = window.devicePixelRatio || 1;
+  const cw = cv.parentElement.clientWidth;
+  const ch = 340;
+  cv.width = cw * dpr;
+  cv.height = ch * dpr;
+  cv.style.width = cw + 'px';
+  cv.style.height = ch + 'px';
+  drawFlightFrame();
+}
+
+function drawFlightFrame(){
+  const cv = $('canvas-flight');
+  const dpr = window.devicePixelRatio || 1;
+  const ctx = cv.getContext('2d');
+  const cw = cv.width / dpr;
+  const ch = cv.height / dpr;
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cw, ch);
+
+  // Soluciones en el tiempo actual
+  const t = flightSimTime;
+  const ex = exactSolution(t);
+
+  // Interpolar altura de Euler
+  let yEuler = 0;
+  let vEuler = 0;
+  for (let i = 0; i < DATA_EULER.rows.length - 1; i++){
+    const r1 = DATA_EULER.rows[i];
+    const r2 = DATA_EULER.rows[i+1];
+    if (t >= r1.t && t <= r2.t){
+      const frac = (t - r1.t) / (r2.t - r1.t || 1);
+      yEuler = r1.y + frac * (r2.y - r1.y);
+      vEuler = r1.v + frac * (r2.v - r1.v);
+      break;
+    }
+  }
+  if (t >= P.tf){
+    yEuler = DATA_EULER.rows[DATA_EULER.rows.length - 1].y;
+    vEuler = DATA_EULER.rows[DATA_EULER.rows.length - 1].v;
+  }
+
+  // Interpolar RK4
+  let yRK4 = 0;
+  for (let i = 0; i < DATA_RK4.rows.length - 1; i++){
+    const r1 = DATA_RK4.rows[i];
+    const r2 = DATA_RK4.rows[i+1];
+    if (t >= r1.t && t <= r2.t){
+      const frac = (t - r1.t) / (r2.t - r1.t || 1);
+      yRK4 = r1.y + frac * (r2.y - r1.y);
+      break;
+    }
+  }
+  if (t >= P.tf) yRK4 = DATA_RK4.rows[DATA_RK4.rows.length - 1].y;
+
+  // Escala de altura visual: altura máxima ~620m
+  const maxVisualY = Math.max(620, exactSolution(P.tf).y * 1.08);
+  const groundY = ch - 42;
+  const skyHeight = groundY - 40;
+
+  const yToPix = alt => groundY - (alt / maxVisualY) * skyHeight;
+
+  // 1. Cielo con gradiente de altitud
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, ch);
+  const climbRatio = Math.min(1, ex.y / 600);
+  if (climbRatio < 0.5){
+    skyGrad.addColorStop(0, '#93c5fd');
+    skyGrad.addColorStop(1, '#e0f2fe');
+  } else {
+    skyGrad.addColorStop(0, '#1e3a8a');
+    skyGrad.addColorStop(0.6, '#3b82f6');
+    skyGrad.addColorStop(1, '#93c5fd');
+  }
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, cw, ch);
+
+  // 2. Nubes suaves de fondo
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  const cloudOffset = (t * 18) % (cw + 120);
+  ctx.beginPath();
+  ctx.fill();
+
+  // 3. Suelo y plataforma de lanzamiento en Cabo Cañaveral
+  ctx.fillStyle = '#15803d'; // Césped
+  ctx.fillRect(0, groundY, cw, ch - groundY);
+  ctx.fillStyle = '#64748b'; // Plataforma hormigón
+  ctx.fillRect(cw * 0.4 - 40, groundY - 8, 80, 8);
+
+  // Torre de servicio (Gantry)
+  ctx.strokeStyle = '#dc2626';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(cw * 0.4 - 24, groundY - 8);
+  ctx.lineTo(cw * 0.4 - 24, groundY - 85);
+  ctx.moveTo(cw * 0.4 - 34, groundY - 8);
+  ctx.lineTo(cw * 0.4 - 34, groundY - 85);
+  // crucetas
+  for (let gy = groundY - 8; gy > groundY - 85; gy -= 15){
+    ctx.moveTo(cw * 0.4 - 34, gy); ctx.lineTo(cw * 0.4 - 24, gy - 15);
+    ctx.moveTo(cw * 0.4 - 34, gy - 15); ctx.lineTo(cw * 0.4 - 24, gy);
+  }
+  ctx.stroke();
+
+  // 4. Marcadores de altitud a la derecha
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'right';
+  for (let m = 0; m <= 600; m += 100){
+    const py = yToPix(m);
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath(); ctx.moveTo(cw - 45, py); ctx.lineTo(cw - 10, py); ctx.stroke();
+    ctx.fillText(m + ' m', cw - 12, py - 3);
+  }
+
+  // 5. Dibujo de Cohetes:
+  // Dibujamos dos cohetes lado a lado para apreciar el rezago de altura:
+  // - Cohete 1 (Exacto - Verde) en x = cw * 0.48
+  // - Cohete 2 (Euler - Azul) en x = cw * 0.62
+  const pxExact = cw * 0.46;
+  const pyExact = yToPix(ex.y);
+
+  const pxEuler = cw * 0.62;
+  const pyEuler = yToPix(yEuler);
+
+  // Función para dibujar un cohete estilizado
+  function drawRocket(x, y, color, label, isFlying){
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Llama y humo del escape si está en vuelo
+    if (isFlying && t > 0.05){
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath();
+      ctx.moveTo(-4, 18);
+      ctx.lineTo(0, 28 + Math.random() * 8);
+      ctx.lineTo(4, 18);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.moveTo(-2, 18);
+      ctx.lineTo(0, 24 + Math.random() * 4);
+      ctx.lineTo(2, 18);
+      ctx.closePath();
+      ctx.fill();
+
+      // Humo
+      ctx.fillStyle = 'rgba(226, 232, 240, 0.5)';
+      ctx.beginPath();
+      ctx.arc((Math.random() - 0.5) * 6, 32 + Math.random() * 6, 6 + Math.random() * 4, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // Cuerpo del cohete
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1.5;
+
+    // Fuselaje
+    ctx.beginPath();
+    ctx.rect(-6, -6, 12, 24);
+    ctx.fill();
+    ctx.stroke();
+
+    // Ojiva cónica (Punta)
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(-6, -6);
+    ctx.lineTo(0, -22);
+    ctx.lineTo(6, -6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Aletas estabilizadoras
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(-6, 10);
+    ctx.lineTo(-12, 20);
+    ctx.lineTo(-6, 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(6, 10);
+    ctx.lineTo(12, 20);
+    ctx.lineTo(6, 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Etiqueta indicadora
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, 0, -26);
+
+    ctx.restore();
+  }
+
+  const isFlying = (t > 0 && t < P.tf);
+
+  // Dibujar cohete exacto
+  drawRocket(pxExact, pyExact, '#16a34a', 'Exacta', isFlying);
+
+  // Dibujar cohete Euler
+  drawRocket(pxEuler, pyEuler, '#0284c7', 'Euler', isFlying);
+
+  // Línea de desfase de altura entre ambos si hay diferencia visible
+  if (Math.abs(pyEuler - pyExact) > 2){
+    ctx.strokeStyle = 'rgba(220, 38, 38, 0.7)';
+    ctx.setLineDash([3, 3]);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(pxExact, pyExact);
+    ctx.lineTo(pxEuler, pyExact);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(pxEuler, pyEuler);
+    ctx.lineTo(pxEuler, pyExact);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Texto de diferencia de altura
+    ctx.fillStyle = '#dc2626';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'left';
+    const dyDiff = Math.abs(ex.y - yEuler);
+    ctx.fillText('Δy = ' + fmt(dyDiff, 1) + ' m', pxEuler + 16, (pyExact + pyEuler) / 2);
+  }
+
+  // 6. HUD / Panel de Telemetría Superior
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(14, 14, 210, 78, 8);
+  } else {
+    ctx.rect(14, 14, 210, 78);
+  }
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('TELEMETRÍA EN VUELO (T+ ' + fmt(t, 2) + ' s)', 22, 30);
+
+  ctx.font = '11px monospace';
+  ctx.fillStyle = '#16a34a';
+  ctx.fillText('y Real:  ' + fmt(ex.y, 2) + ' m', 22, 46);
+  ctx.fillStyle = '#0284c7';
+  ctx.fillText('y Euler: ' + fmt(yEuler, 2) + ' m', 22, 60);
+  ctx.fillStyle = '#475569';
+  ctx.fillText('v Real:  ' + fmt(ex.v, 2) + ' m/s', 22, 74);
+  ctx.fillText('v Euler: ' + fmt(vEuler, 2) + ' m/s', 120, 74);
+}
+
+function flightSimLoop(timestamp){
+  if (!lastFrameTime) lastFrameTime = timestamp;
+  const dt = (timestamp - lastFrameTime) / 1000;
+  lastFrameTime = timestamp;
+
+  if (isFlightPlaying){
+    flightSimTime += dt * 1.5; // velocidad 1.5x para buen ritmo visual
+    if (flightSimTime >= P.tf){
+      flightSimTime = P.tf;
+      isFlightPlaying = false;
+      $('sim-btn-play').textContent = 'Iniciar Despegue';
+    }
+    $('sim-slider').value = flightSimTime;
+    $('sim-time-lbl').textContent = fmt(flightSimTime, 2) + ' s';
+    drawFlightFrame();
+  }
+
+  if (isFlightPlaying){
+    flightAnimId = requestAnimationFrame(flightSimLoop);
+  }
+}
+
+// Eventos del simulador de vuelo
+$('sim-btn-play').addEventListener('click', () => {
+  if (isFlightPlaying){
+    isFlightPlaying = false;
+    $('sim-btn-play').textContent = 'Continuar';
+    cancelAnimationFrame(flightAnimId);
+  } else {
+    if (flightSimTime >= P.tf) flightSimTime = 0;
+    isFlightPlaying = true;
+    $('sim-btn-play').textContent = 'Pausar';
+    lastFrameTime = null;
+    flightAnimId = requestAnimationFrame(flightSimLoop);
+  }
+});
+
+$('sim-btn-reset').addEventListener('click', () => {
+  isFlightPlaying = false;
+  cancelAnimationFrame(flightAnimId);
+  $('sim-btn-play').textContent = 'Iniciar Despegue';
+  flightSimTime = 0;
+  $('sim-slider').value = 0;
+  $('sim-time-lbl').textContent = '0.00 s';
+  drawFlightFrame();
+});
+
+$('sim-slider').addEventListener('input', e => {
+  isFlightPlaying = false;
+  cancelAnimationFrame(flightAnimId);
+  $('sim-btn-play').textContent = 'Iniciar Despegue';
+  flightSimTime = parseFloat(e.target.value);
+  $('sim-time-lbl').textContent = fmt(flightSimTime, 2) + ' s';
+  drawFlightFrame();
+});
+
+/* =========================================================================
+   GRÁFICAS DINÁMICAS INTERACTIVAS (CANVAS PURO CON TOOLTIP Y CROSSHAIR)
+   ========================================================================= */
+const ACTIVE_SERIES = {
+  exact: true,
+  euler: true,
+  heun: true,
+  rk4: true
+};
+
+['chk-exact', 'chk-euler', 'chk-heun', 'chk-rk4'].forEach(id => {
+  $(id).addEventListener('change', e => {
+    const key = id.replace('chk-', '');
+    ACTIVE_SERIES[key] = e.target.checked;
+    e.target.closest('.series-pill').classList.toggle('active', e.target.checked);
+    renderAllCharts();
+  });
+});
+
+function niceNum(range, round){
+  if (!Number.isFinite(range) || range === 0) return 1;
+  const exp = Math.floor(Math.log10(Math.abs(range)));
+  const f = range / Math.pow(10, exp);
+  let nf;
+  if (round){
+    if (f < 1.5) nf = 1; else if (f < 3) nf = 2; else if (f < 7) nf = 5; else nf = 10;
+  } else {
+    if (f <= 1) nf = 1; else if (f <= 2) nf = 2; else if (f <= 5) nf = 5; else nf = 10;
+  }
+  return nf * Math.pow(10, exp);
+}
+
+function axisTicks(min, max, count){
+  if (!(max > min)) max = min + 1;
+  const range = niceNum(max - min, false);
+  const step = niceNum(range / (count - 1), true);
+  const lo = Math.floor(min / step) * step;
+  const hi = Math.ceil(max / step) * step;
+  const nT = Math.max(1, Math.round((hi - lo) / step));
+  const out = [];
+  for (let i = 0; i <= nT; i++) out.push(lo + i * step);
+  return { ticks: out, lo, hi };
+}
+
+// Renderizador interactivo de gráficas con soporte hover / crosshair
+function plotInteractive(canvasId, tooltipId, seriesList, opts = {}){
+  const cv = $(canvasId);
+  const tooltip = $(tooltipId);
+  if (!cv) return;
+
+  const cw = cv.clientWidth;
+  const ch = cv.clientHeight;
+  if (cw < 40 || ch < 40) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(cw * dpr);
+  cv.height = Math.round(ch * dpr);
+
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const pad = { l: 62, r: 24, t: 28, b: 42 };
+  const pw = cw - pad.l - pad.r;
+  const ph = ch - pad.t - pad.b;
+  if (pw < 10 || ph < 10) return;
+
+  let xmin = 0, xmax = P.tf, ymin = 0, ymax = -Infinity;
+  for (const s of seriesList){
+    if (!s.visible) continue;
+    for (const pt of s.points){
+      if (pt.y > ymax) ymax = pt.y;
+    }
+  }
+  if (!Number.isFinite(ymax) || ymax <= 0) ymax = 10;
+  ymax *= 1.06;
+
+  const AX = axisTicks(xmin, xmax, 7);
+  const AY = axisTicks(ymin, ymax, 6);
+
+  const X = v => pad.l + ((v - AX.lo) / (AX.hi - AX.lo)) * pw;
+  const Y = v => pad.t + ph - ((v - AY.lo) / (AY.hi - AY.lo)) * ph;
+
+  function drawBase(){
+    ctx.clearRect(0, 0, cw, ch);
+
+    // Rejilla de fondo
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(pad.l, pad.t, pw, ph);
+
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#64748b';
+
+    // Ticks Y
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (const tk of AY.ticks){
+      const y = Y(tk);
+      if (y < pad.t - 1 || y > pad.t + ph + 1) continue;
+      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + pw, y); ctx.stroke();
+      ctx.fillText(tk >= 100 ? tk.toFixed(0) : tk >= 10 ? tk.toFixed(1) : tk.toFixed(2), pad.l - 8, y);
+    }
+
+    // Ticks X
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (const tk of AX.ticks){
+      const x = X(tk);
+      if (x < pad.l - 1 || x > pad.l + pw + 1) continue;
+      ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + ph); ctx.stroke();
+      ctx.fillText(tk.toFixed(0) + 's', x, pad.t + ph + 8);
+    }
+
+    // Ejes
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(pad.l, pad.t);
+    ctx.lineTo(pad.l, pad.t + ph);
+    ctx.lineTo(pad.l + pw, pad.t + ph);
+    ctx.stroke();
+
+    // Series
+    for (const s of seriesList){
+      if (!s.visible || !s.points || s.points.length === 0) continue;
+      ctx.beginPath();
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = s.width || 2.4;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.setLineDash(s.dash || []);
+
+      s.points.forEach((pt, idx) => {
+        const px = X(pt.x), py = Y(pt.y);
+        if (idx === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (s.dots){
+        ctx.fillStyle = s.color;
+        for (const pt of s.points){
+          ctx.beginPath();
+          ctx.arc(X(pt.x), Y(pt.y), 3.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  // Dibujo inicial base
+  drawBase();
+
+  // Interacción al mover el cursor (Crosshair)
+  cv.onmousemove = e => {
+    const rect = cv.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    if (mouseX >= pad.l && mouseX <= pad.l + pw && mouseY >= pad.t && mouseY <= pad.t + ph){
+      const tHover = AX.lo + ((mouseX - pad.l) / pw) * (AX.hi - AX.lo);
+
+      // Re-dibujar base limpia
+      drawBase();
+
+      // Línea vertical
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(mouseX, pad.t);
+      ctx.lineTo(mouseX, pad.t + ph);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Puntos destacados en cada serie y construcción de tooltip
+      let ttHtml = `<strong>Tiempo: ${fmt(tHover, 2)} s</strong>`;
+
+      for (const s of seriesList){
+        if (!s.visible) continue;
+        // Encontrar punto más cercano
+        const nearest = s.points.reduce((prev, curr) => Math.abs(curr.x - tHover) < Math.abs(prev.x - tHover) ? curr : prev);
+        const ny = Y(nearest.y);
+        ctx.fillStyle = s.color;
+        ctx.beginPath();
+        ctx.arc(mouseX, ny, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ttHtml += `<div style="color:${s.color}">● ${s.name}: <b>${fmt(nearest.y, 4)}</b> ${opts.unit || ''}</div>`;
+      }
+
+      tooltip.innerHTML = ttHtml;
+      tooltip.style.display = 'block';
+      tooltip.style.left = mouseX + 'px';
+      tooltip.style.top = Math.max(20, mouseY - 10) + 'px';
+    } else {
+      drawBase();
+      tooltip.style.display = 'none';
+    }
+  };
+
+  cv.onmouseleave = () => {
+    drawBase();
+    tooltip.style.display = 'none';
+  };
+}
+
+function sampleExactCurve(key, count = 200){
+  const pts = [];
+  for (let i = 0; i <= count; i++){
+    const t = (P.tf * i) / count;
+    pts.push({ x: t, y: exactSolution(t)[key] });
+  }
+  return pts;
+}
+
+function renderAllCharts(){
+  if (!DATA_EULER || !DATA_HEUN || !DATA_RK4) return;
+
+  // 1. Gráfica de Velocidad
+  const seriesV = [
+    { name: 'Solución Analítica', color: '#16a34a', width: 2.8, points: sampleExactCurve('v'), visible: ACTIVE_SERIES.exact },
+    { name: 'Euler', color: '#0284c7', width: 2.2, dots: true, points: DATA_EULER.rows.map(r => ({ x: r.t, y: r.v })), visible: ACTIVE_SERIES.euler },
+    { name: 'Heun', color: '#ea580c', width: 2.2, dash: [5, 4], points: DATA_HEUN.rows.map(r => ({ x: r.t, y: r.v })), visible: ACTIVE_SERIES.heun },
+    { name: 'RK4', color: '#7c3aed', width: 2.2, dash: [2, 3], points: DATA_RK4.rows.map(r => ({ x: r.t, y: r.v })), visible: ACTIVE_SERIES.rk4 }
+  ];
+  plotInteractive('chart-v', 'tooltip-v', seriesV, { unit: 'm/s' });
+
+  // 2. Gráfica de Altura
+  const seriesY = [
+    { name: 'Solución Analítica', color: '#16a34a', width: 2.8, points: sampleExactCurve('y'), visible: ACTIVE_SERIES.exact },
+    { name: 'Euler', color: '#0284c7', width: 2.2, dots: true, points: DATA_EULER.rows.map(r => ({ x: r.t, y: r.y })), visible: ACTIVE_SERIES.euler },
+    { name: 'Heun', color: '#ea580c', width: 2.2, dash: [5, 4], points: DATA_HEUN.rows.map(r => ({ x: r.t, y: r.y })), visible: ACTIVE_SERIES.heun },
+    { name: 'RK4', color: '#7c3aed', width: 2.2, dash: [2, 3], points: DATA_RK4.rows.map(r => ({ x: r.t, y: r.y })), visible: ACTIVE_SERIES.rk4 }
+  ];
+  plotInteractive('chart-y', 'tooltip-y', seriesY, { unit: 'm' });
+
+  // 3. Gráfica de Error Absoluto
+  const seriesE = [
+    { name: 'Error Euler |Δy|', color: '#0284c7', width: 2.2, dots: true, points: DATA_EULER.rows.map(r => ({ x: r.t, y: r.ey })), visible: ACTIVE_SERIES.euler },
+    { name: 'Error Euler |Δv|', color: '#38bdf8', width: 1.8, dash: [4, 4], points: DATA_EULER.rows.map(r => ({ x: r.t, y: r.ev })), visible: ACTIVE_SERIES.euler },
+    { name: 'Error Heun |Δy|', color: '#ea580c', width: 2.0, points: DATA_HEUN.rows.map(r => ({ x: r.t, y: r.ey })), visible: ACTIVE_SERIES.heun },
+    { name: 'Error RK4 |Δy|', color: '#7c3aed', width: 2.0, points: DATA_RK4.rows.map(r => ({ x: r.t, y: r.ey })), visible: ACTIVE_SERIES.rk4 }
+  ];
+  plotInteractive('chart-e', 'tooltip-e', seriesE, { unit: '' });
+}
+
+/* =========================================================================
+   RENDER: EXPLORADOR PASO A PASO DETALLADO (PESTAÑA 2)
+   ========================================================================= */
+function updateStepSelector(){
+  const sel = $('sel-step');
+  sel.innerHTML = '';
+  const totalSteps = DATA_EULER.rows.length - 1;
+
+  for (let i = 1; i <= totalSteps; i++){
+    const opt = document.createElement('option');
+    opt.value = i;
+    const r = DATA_EULER.rows[i];
+    const prevR = DATA_EULER.rows[i-1];
+    opt.textContent = `Paso ${i}: t = ${fmt(prevR.t, 2)}s → ${fmt(r.t, 2)}s`;
+    sel.appendChild(opt);
+  }
+  if (currentStepIdx > totalSteps) currentStepIdx = 1;
+  sel.value = currentStepIdx;
+  renderStepDetail();
+}
+
+function renderStepDetail(){
+  const idx = currentStepIdx;
+  const container = $('step-detail-container');
+  const h = DATA_EULER.h;
+
+  const rE = DATA_EULER.rows[idx];
+  const rE_prev = DATA_EULER.rows[idx-1];
+
+  const rH = DATA_HEUN.rows[idx];
+  const rH_prev = DATA_HEUN.rows[idx-1];
+
+  const rR = DATA_RK4.rows[idx];
+  const rR_prev = DATA_RK4.rows[idx-1];
+
+  $('stepper-title').textContent = `Iteración ${idx}: t = ${fmt(rE_prev.t, 2)} s → ${fmt(rE.t, 2)} s (Paso efectivo h = ${fmt(h, 4)} s)`;
+
+  if (currentDetailMethod === 'euler'){
+    const d = rE.detail;
+    container.innerHTML = `
+      <div class="step-card">
+        <div class="step-title" style="color:var(--euler-col)">
+          Desarrollo Numérico de Euler (Paso ${idx})
+        </div>
+        <div class="step-math-grid">
+          <div class="math-subcard">
+            <div class="math-subcard-title">1. Estado Inicial del Intervalo</div>
+            <div class="math-eq">t<sub>${idx-1}</sub> = <b>${fmt(rE_prev.t, 4)} s</b></div>
+            <div class="math-eq">v<sub>${idx-1}</sub> = <b>${fmt(rE_prev.v, 4)} m/s</b></div>
+            <div class="math-eq">y<sub>${idx-1}</sub> = <b>${fmt(rE_prev.y, 4)} m</b></div>
+          </div>
+          <div class="math-subcard">
+            <div class="math-subcard-title">2. Evaluación de la Derivada (Aceleración)</div>
+            <div class="math-eq euler">a<sub>${idx-1}</sub> = 5.19 − 0.1 · (${fmt(rE_prev.v, 4)})</div>
+            <div class="math-eq euler"><b>a<sub>${idx-1}</sub> = ${fmt(d.an, 4)} m/s²</b></div>
+            <p style="font-size:12px;color:var(--muted);margin:6px 0 0">
+              Euler supone esta aceleración constante durante todo el paso de ${fmt(h, 2)} s.
+            </p>
+          </div>
+          <div class="math-subcard">
+            <div class="math-subcard-title">3. Actualización de Velocidad y Altura</div>
+            <div class="math-eq euler">v<sub>${idx}</sub> = ${fmt(rE_prev.v, 4)} + (${fmt(h, 4)}) · (${fmt(d.an, 4)}) = <b>${fmt(rE.v, 4)} m/s</b></div>
+            <div class="math-eq euler">y<sub>${idx}</sub> = ${fmt(rE_prev.y, 4)} + (${fmt(h, 4)}) · (${fmt(rE_prev.v, 4)}) = <b>${fmt(rE.y, 4)} m</b></div>
+          </div>
+          <div class="math-subcard">
+            <div class="math-subcard-title">4. Contraste con la Solución Analítica</div>
+            <div class="math-eq exact">v<sub>exacta</sub>(${fmt(rE.t, 2)}s) = <b>${fmt(rE.vEx, 4)} m/s</b> &nbsp;(Error: <span class="err">${fmt(rE.ev, 4)} m/s</span>)</div>
+            <div class="math-eq exact">y<sub>exacta</sub>(${fmt(rE.t, 2)}s) = <b>${fmt(rE.yEx, 4)} m</b> &nbsp;(Error: <span class="err">${fmt(rE.ey, 4)} m</span>)</div>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (currentDetailMethod === 'heun'){
+    const d = rH.detail;
+    container.innerHTML = `
+      <div class="step-card">
+        <div class="step-title" style="color:var(--heun-col)">
+          Desarrollo Numérico de Heun: Predictor-Corrector (Paso ${idx})
+        </div>
+        <div class="step-math-grid">
+          <div class="math-subcard">
+            <div class="math-subcard-title">1. Pendientes Iniciales (k₁) en t = ${fmt(rH_prev.t, 2)} s</div>
+            <div class="math-eq heun">k<sub>1,v</sub> = 5.19 − 0.1 · (${fmt(rH_prev.v, 4)}) = <b>${fmt(d.k1v, 4)} m/s²</b></div>
+            <div class="math-eq heun">k<sub>1,y</sub> = v<sub>${idx-1}</sub> = <b>${fmt(d.k1y, 4)} m/s</b></div>
+          </div>
+          <div class="math-subcard">
+            <div class="math-subcard-title">2. Paso Predictor (Euler Estándar al Final)</div>
+            <div class="math-eq heun">ṽ<sub>${idx}</sub> = ${fmt(rH_prev.v, 4)} + ${fmt(h, 4)} · (${fmt(d.k1v, 4)}) = <b>${fmt(d.vp, 4)} m/s</b></div>
+            <div class="math-eq heun">ỹ<sub>${idx}</sub> = ${fmt(rH_prev.y, 4)} + ${fmt(h, 4)} · (${fmt(d.k1y, 4)}) = <b>${fmt(d.yp, 4)} m</b></div>
+          </div>
+          <div class="math-subcard">
+            <div class="math-subcard-title">3. Pendientes Correctoras (k₂) en el Estado Predicho</div>
+            <div class="math-eq heun">k<sub>2,v</sub> = 5.19 − 0.1 · (${fmt(d.vp, 4)}) = <b>${fmt(d.k2v, 4)} m/s²</b></div>
+            <div class="math-eq heun">k<sub>2,y</sub> = ṽ<sub>${idx}</sub> = <b>${fmt(d.k2y, 4)} m/s</b></div>
+          </div>
+          <div class="math-subcard">
+            <div class="math-subcard-title">4. Paso Corrector (Promedio Trapezoidal Final)</div>
+            <div class="math-eq heun">v<sub>${idx}</sub> = ${fmt(rH_prev.v, 4)} + (${fmt(h/2, 4)}) · (${fmt(d.k1v, 4)} + ${fmt(d.k2v, 4)}) = <b>${fmt(rH.v, 4)} m/s</b></div>
+            <div class="math-eq heun">y<sub>${idx}</sub> = ${fmt(rH_prev.y, 4)} + (${fmt(h/2, 4)}) · (${fmt(d.k1y, 4)} + ${fmt(d.k2y, 4)}) = <b>${fmt(rH.y, 4)} m</b></div>
+            <div class="math-eq exact" style="margin-top:6px;font-size:13px">
+              Error en Heun: Δv = <span class="err">${fmt(rH.ev, 4)} m/s</span> | Δy = <span class="err">${fmt(rH.ey, 4)} m</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (currentDetailMethod === 'rk4'){
+    const d = rR.detail;
+    container.innerHTML = `
+      <div class="step-card">
+        <div class="step-title" style="color:var(--rk4-col)">
+          Desarrollo Numérico de Runge-Kutta 4 (RK4 - 4 Etapas) (Paso ${idx})
+        </div>
+        <div class="step-math-grid">
+          <div class="math-subcard">
+            <div class="math-subcard-title">Etapa 1: Pendientes k₁ (Inicio t<sub>${idx-1}</sub>)</div>
+            <div class="math-eq rk4">k<sub>1,v</sub> = f<sub>v</sub>(v<sub>${idx-1}</sub>) = <b>${fmt(d.k1v, 4)}</b> m/s²</div>
+            <div class="math-eq rk4">k<sub>1,y</sub> = v<sub>${idx-1}</sub> = <b>${fmt(d.k1y, 4)}</b> m/s</div>
+          </div>
+          <div class="math-subcard">
+            <div class="math-subcard-title">Etapa 2: Pendientes k₂ (Punto Medio con k₁)</div>
+            <div class="math-eq rk4">v⁽¹⁾ = ${fmt(rR_prev.v, 4)} + (${fmt(h/2, 4)})·(${fmt(d.k1v, 4)}) = ${fmt(d.vMid1, 4)}</div>
+            <div class="math-eq rk4">k<sub>2,v</sub> = 5.19 − 0.1·(${fmt(d.vMid1, 4)}) = <b>${fmt(d.k2v, 4)}</b> m/s²</div>
+            <div class="math-eq rk4">k<sub>2,y</sub> = v⁽¹⁾ = <b>${fmt(d.k2y, 4)}</b> m/s</div>
+          </div>
+          <div class="math-subcard">
+            <div class="math-subcard-title">Etapa 3: Pendientes k₃ (Punto Medio con k₂)</div>
+            <div class="math-eq rk4">v⁽²⁾ = ${fmt(rR_prev.v, 4)} + (${fmt(h/2, 4)})·(${fmt(d.k2v, 4)}) = ${fmt(d.vMid2, 4)}</div>
+            <div class="math-eq rk4">k<sub>3,v</sub> = 5.19 − 0.1·(${fmt(d.vMid2, 4)}) = <b>${fmt(d.k3v, 4)}</b> m/s²</div>
+            <div class="math-eq rk4">k<sub>3,y</sub> = v⁽²⁾ = <b>${fmt(d.k3y, 4)}</b> m/s</div>
+          </div>
+          <div class="math-subcard">
+            <div class="math-subcard-title">Etapa 4: Pendientes k₄ (Final con k₃)</div>
+            <div class="math-eq rk4">v⁽³⁾ = ${fmt(rR_prev.v, 4)} + (${fmt(h, 4)})·(${fmt(d.k3v, 4)}) = ${fmt(d.vEnd, 4)}</div>
+            <div class="math-eq rk4">k<sub>4,v</sub> = 5.19 − 0.1·(${fmt(d.vEnd, 4)}) = <b>${fmt(d.k4v, 4)}</b> m/s²</div>
+            <div class="math-eq rk4">k<sub>4,y</sub> = v⁽³⁾ = <b>${fmt(d.k4y, 4)}</b> m/s</div>
+          </div>
+        </div>
+        <div class="math-subcard" style="margin-top:14px;background:#f5f3ff;border-color:#ddd6fe">
+          <div class="math-subcard-title" style="color:var(--rk4-col)">Ponderación de Simpson Final (Orden h⁴)</div>
+          <div class="math-eq rk4">Δv = (${fmt(h, 4)} / 6) · [ ${fmt(d.k1v, 4)} + 2·(${fmt(d.k2v, 4)}) + 2·(${fmt(d.k3v, 4)}) + ${fmt(d.k4v, 4)} ] = <b>+${fmt(d.deltaV, 4)} m/s</b></div>
+          <div class="math-eq rk4">Δy = (${fmt(h, 4)} / 6) · [ ${fmt(d.k1y, 4)} + 2·(${fmt(d.k2y, 4)}) + 2·(${fmt(d.k3y, 4)}) + ${fmt(d.k4y, 4)} ] = <b>+${fmt(d.deltaY, 4)} m</b></div>
+          <div class="math-eq exact" style="margin-top:8px">
+            <b>v<sub>${idx}</sub> = ${fmt(rR.v, 4)} m/s</b> &nbsp;(Error exacto: <span class="good">${fmt(rR.ev, 6)} m/s</span>) &nbsp;|&nbsp;
+            <b>y<sub>${idx}</sub> = ${fmt(rR.y, 4)} m</b> &nbsp;(Error exacto: <span class="good">${fmt(rR.ey, 6)} m</span>)
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+// Controladores de botones del Stepper
+$('btn-step-prev').addEventListener('click', () => {
+  if (currentStepIdx > 1){
+    currentStepIdx--;
+    $('sel-step').value = currentStepIdx;
+    renderStepDetail();
+  }
+});
+
+$('btn-step-next').addEventListener('click', () => {
+  if (currentStepIdx < DATA_EULER.rows.length - 1){
+    currentStepIdx++;
+    $('sel-step').value = currentStepIdx;
+    renderStepDetail();
+  }
+});
+
+$('sel-step').addEventListener('change', e => {
+  currentStepIdx = parseInt(e.target.value);
+  renderStepDetail();
+});
+
+// Controladores de pestañas de métodos para el stepper
+$('tab-meth-euler').addEventListener('click', () => {
+  currentDetailMethod = 'euler';
+  setActiveMethodTab('tab-meth-euler');
+  renderStepDetail();
+});
+$('tab-meth-heun').addEventListener('click', () => {
+  currentDetailMethod = 'heun';
+  setActiveMethodTab('tab-meth-heun');
+  renderStepDetail();
+});
+$('tab-meth-rk4').addEventListener('click', () => {
+  currentDetailMethod = 'rk4';
+  setActiveMethodTab('tab-meth-rk4');
+  renderStepDetail();
+});
+
+function setActiveMethodTab(btnId){
+  ['tab-meth-euler', 'tab-meth-heun', 'tab-meth-rk4'].forEach(id => {
+    $(id).classList.toggle('active', id === btnId);
+  });
+}
+
+/* =========================================================================
+   RENDER: TABLA COMPLETA DE ITERACIONES (PESTAÑA 2)
+   ========================================================================= */
+function renderFullIterationsTable(){
+  const tbl = $('tbl-iterations-full');
+  const mode = $('sel-table-method').value;
+
+  let html = '';
+
+  if (mode === 'comparative'){
+    html = `
+      <thead>
+        <tr>
+          <th>Paso n</th>
+          <th>t (s)</th>
+          <th>v Exacta (m/s)</th>
+          <th>v Euler</th>
+          <th>v Heun</th>
+          <th>v RK4</th>
+          <th>y Exacta (m)</th>
+          <th>y Euler</th>
+          <th>y Heun</th>
+          <th>y RK4</th>
+        </tr>
+      </thead>
+      <tbody>
+    `;
+
+    DATA_EULER.rows.forEach((rE, idx) => {
+      const rH = DATA_HEUN.rows[idx];
+      const rR = DATA_RK4.rows[idx];
+      html += `
+        <tr>
+          <td>${rE.n}</td>
+          <td>${fmt(rE.t, 2)}</td>
+          <td class="good">${fmt(rE.vEx, 4)}</td>
+          <td>${fmt(rE.v, 4)}</td>
+          <td>${fmt(rH.v, 4)}</td>
+          <td style="color:var(--rk4-col);font-weight:600">${fmt(rR.v, 4)}</td>
+          <td class="good">${fmt(rE.yEx, 4)}</td>
+          <td>${fmt(rE.y, 4)}</td>
+          <td>${fmt(rH.y, 4)}</td>
+          <td style="color:var(--rk4-col);font-weight:600">${fmt(rR.y, 4)}</td>
+        </tr>
+      `;
+    });
+    html += '</tbody>';
+
+  } else {
+    // Vista individual por método
+    const data = (mode === 'euler') ? DATA_EULER : (mode === 'heun') ? DATA_HEUN : DATA_RK4;
+    const name = (mode === 'euler') ? 'Euler' : (mode === 'heun') ? 'Heun' : 'RK4';
+
+    html = `
+      <thead>
+        <tr>
+          <th>n</th>
+          <th>t (s)</th>
+          <th>v ${name} (m/s)</th>
+          <th>v Exacta (m/s)</th>
+          <th>Error |Δv|</th>
+          <th>y ${name} (m)</th>
+          <th>y Exacta (m)</th>
+          <th>Error |Δy|</th>
+        </tr>
+      </thead>
+      <tbody>
+    `;
+
+    data.rows.forEach(r => {
+      html += `
+        <tr>
+          <td>${r.n}</td>
+          <td>${fmt(r.t, 2)}</td>
+          <td style="font-weight:700">${fmt(r.v, 4)}</td>
+          <td class="good">${fmt(r.vEx, 4)}</td>
+          <td class="err">${fmt(r.ev, 4)}</td>
+          <td style="font-weight:700">${fmt(r.y, 4)}</td>
+          <td class="good">${fmt(r.yEx, 4)}</td>
+          <td class="err">${fmt(r.ey, 4)}</td>
+        </tr>
+      `;
+    });
+    html += '</tbody>';
+  }
+
+  tbl.innerHTML = html;
+}
+
+$('sel-table-method').addEventListener('change', renderFullIterationsTable);
+
+/* =========================================================================
+   RENDER: TABLA DE CONVERGENCIA (PESTAÑA 3)
+   ========================================================================= */
+function renderConvergenceTable(){
+  const testSteps = [2.0, 1.0, 0.5, 0.25, 0.125];
+  const exact = exactSolution(P.tf);
+
+  let html = `
+    <thead>
+      <tr>
+        <th class="th-left">Paso h (s)</th>
+        <th>Nº Pasos</th>
+        <th>Error v Euler</th>
+        <th>Razón v</th>
+        <th>Error y Euler</th>
+        <th>Razón y</th>
+        <th>Error y Heun</th>
+        <th>Razón Heun</th>
+        <th>Error y RK4</th>
+        <th>Razón RK4</th>
+      </tr>
+    </thead>
+    <tbody>
+  `;
+
+  let prevEv = null, prevEy = null, prevEyH = null, prevEyR = null;
+
+  testSteps.forEach(h => {
+    if (h > P.tf) return;
+    const simE = runSimulation('euler', h);
+    const simH = runSimulation('heun', h);
+    const simR = runSimulation('rk4', h);
+
+    const lastE = simE.rows[simE.rows.length - 1];
+    const lastH = simH.rows[simH.rows.length - 1];
+    const lastR = simR.rows[simR.rows.length - 1];
+
+    const rEv = prevEv ? (prevEv / lastE.ev) : null;
+    const rEy = prevEy ? (prevEy / lastE.ey) : null;
+    const rEyH = prevEyH ? (prevEyH / lastH.ey) : null;
+    const rEyR = prevEyR ? (prevEyR / (lastR.ey || 1e-9)) : null;
+
+    html += `
+      <tr>
+        <td class="td-left" style="font-weight:700">${fmt(h, 3)} s</td>
+        <td>${simE.n}</td>
+        <td class="err">${fmt(lastE.ev, 4)}</td>
+        <td>${rEv ? '×' + fmt(rEv, 2) : '—'}</td>
+        <td class="err">${fmt(lastE.ey, 4)}</td>
+        <td><b>${rEy ? '×' + fmt(rEy, 2) : '—'}</b> (O(h))</td>
+        <td style="color:var(--heun-col)">${fmt(lastH.ey, 4)}</td>
+        <td><b>${rEyH ? '×' + fmt(rEyH, 2) : '—'}</b> (O(h²))</td>
+        <td style="color:var(--rk4-col);font-weight:700">${fmt(lastR.ey, 6)}</td>
+        <td><b>${rEyR ? '×' + fmt(rEyR, 1) : '—'}</b> (O(h⁴))</td>
+      </tr>
+    `;
+
+    prevEv = lastE.ev;
+    prevEy = lastE.ey;
+    prevEyH = lastH.ey;
+    prevEyR = lastR.ey;
+  });
+
+  html += '</tbody>';
+  $('tbl-convergence-full').innerHTML = html;
+}
+
+/* =========================================================================
+   EXPORTAR CSV COMPLETO
+   ========================================================================= */
+$('btn-download-csv').addEventListener('click', () => {
+  const mode = $('sel-table-method').value;
+  let filename = `mision_nasa_1962_${mode}_h${String(DATA_EULER.h).replace('.','_')}.csv`;
+  let csv = '';
+
+  if (mode === 'comparative'){
+    csv = 'paso;t(s);v_exacta(m/s);v_euler(m/s);v_heun(m/s);v_rk4(m/s);y_exacta(m);y_euler(m);y_heun(m);y_rk4(m)\n';
+    DATA_EULER.rows.forEach((rE, i) => {
+      const rH = DATA_HEUN.rows[i];
+      const rR = DATA_RK4.rows[i];
+      csv += `${rE.n};${rE.t.toFixed(4)};${rE.vEx.toFixed(4)};${rE.v.toFixed(4)};${rH.v.toFixed(4)};${rR.v.toFixed(4)};${rE.yEx.toFixed(4)};${rE.y.toFixed(4)};${rH.y.toFixed(4)};${rR.y.toFixed(4)}\n`;
+    });
+  } else {
+    const data = (mode === 'euler') ? DATA_EULER : (mode === 'heun') ? DATA_HEUN : DATA_RK4;
+    csv = 'paso;t(s);v_num(m/s);v_exacta(m/s);error_v(m/s);y_num(m);y_exacta(m);error_y(m)\n';
+    data.rows.forEach(r => {
+      csv += `${r.n};${r.t.toFixed(4)};${r.v.toFixed(4)};${r.vEx.toFixed(4)};${r.ev.toFixed(4)};${r.y.toFixed(4)};${r.yEx.toFixed(4)};${r.ey.toFixed(4)}\n`;
+    });
+  }
+
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+/* =========================================================================
+   GESTIÓN DE PESTAÑAS (TABS ACTIVAS)
+   ========================================================================= */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+
+    btn.classList.add('active');
+    const target = btn.dataset.tab;
+    $('panel-' + target).classList.add('active');
+
+    requestAnimationFrame(() => {
+      if (target === 'simulador'){
+        initFlightCanvas();
+        renderAllCharts();
+      } else if (target === 'iteraciones'){
+        renderStepDetail();
+        renderFullIterationsTable();
+      } else if (target === 'modelo'){
+        renderConvergenceTable();
+      }
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+
+/* =========================================================================
+   ACTUALIZACIÓN GLOBAL DE CÁLCULOS
+   ========================================================================= */
+function recalculateAll(){
+  readParams();
+  DATA_EULER = runSimulation('euler');
+  DATA_HEUN = runSimulation('heun');
+  DATA_RK4 = runSimulation('rk4');
+
+  // Ajustar slider de simulación si tf cambió
+  $('sim-slider').max = P.tf;
+  if (flightSimTime > P.tf) flightSimTime = P.tf;
+
+  renderMissionSummary();
+  renderMilestones();
+  renderAllCharts();
+  updateStepSelector();
+  renderFullIterationsTable();
+  renderConvergenceTable();
+  drawFlightFrame();
+}
+
+// Sincronización del selector de preselección de h con la entrada numérica libre
+function syncPresetH(val){
+  const sel = $('sel-preset-h');
+  const numVal = parseFloat(val);
+  const known = [2, 1, 0.5, 0.25];
+  const matched = known.find(k => Math.abs(k - numVal) < 1e-5);
+  if (matched !== undefined){
+    sel.value = String(matched);
+  } else {
+    sel.value = 'custom';
+  }
+}
+
+$('sel-preset-h').addEventListener('change', e => {
+  const val = e.target.value;
+  if (val !== 'custom'){
+    $('in-h').value = val;
+    recalculateAll();
+  } else {
+    $('in-h').focus();
+    $('in-h').select();
+  }
+});
+
+// Botón restaurar
+$('btn-reset').addEventListener('click', () => {
+  $('in-m').value  = 1000;
+  $('in-T').value  = 15000;
+  $('in-g').value  = 9.81;
+  $('in-k').value  = 100;
+  $('in-v0').value = 0;
+  $('in-y0').value = 0;
+  $('in-tf').value = 20;
+  $('in-h').value  = 2;
+  $('sel-preset-h').value = '2';
+  recalculateAll();
+});
+
+// Entradas numéricas
+['in-m', 'in-T', 'in-g', 'in-k', 'in-v0', 'in-y0', 'in-tf'].forEach(id => {
+  $(id).addEventListener('input', recalculateAll);
+  $(id).addEventListener('change', recalculateAll);
+});
+
+$('in-h').addEventListener('input', e => {
+  syncPresetH(e.target.value);
+  recalculateAll();
+});
+$('in-h').addEventListener('change', e => {
+  syncPresetH(e.target.value);
+  recalculateAll();
+});
+
+// Redimensionamiento
+window.addEventListener('resize', () => {
+  initFlightCanvas();
+  renderAllCharts();
+});
+
+// Inicialización de arranque
+window.addEventListener('DOMContentLoaded', () => {
+  recalculateAll();
+  initFlightCanvas();
+});
+</script>
+</body>
+</html>
